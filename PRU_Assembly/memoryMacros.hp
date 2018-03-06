@@ -1,0 +1,121 @@
+/* Helps with interacting with the various RAM
+ * systems. */
+
+
+
+#ifndef _MEMORY_MACROS_HP_
+#define _MEMORY_MACROS_HP_
+
+
+
+#include "registers.hp"
+
+
+
+/* The PRUSS CFG block contains registers for
+ * control and status of power management, memory
+ * parity and enhanced PRU GP port functions. */
+#define PRUSS_CFG 0x00026000
+
+#define STACK_SIZE  0x200
+#define STACK_BEGIN (STACK_END - STACK_SIZE)
+#define STACK_END   0x2000
+
+
+
+/* Load a 32-bit word of memory into a register.
+ * Note that this macro overwrites the contents
+ * of register r1.
+ * 
+ * Params:
+ * destination_register= The register to write
+ *         the word of memory into.
+ * source_memory_word= The word number in memory
+ *         to load data from.  (This is the same
+ *         as the element number that would be
+ *         used to access it in a corresponding C
+ *         code.) */
+.macro MEM_LOAD
+.mparam destination_register, source_memory_word
+	MOV  r1, source_memory_word * 4
+	LBBO destination_register, r1, 0, 4
+.endm
+
+
+
+/* Writes the contents of a register (32 bits)
+ * to PRU memory.  Note that this will overwrite
+ * whatever was written in register r1.
+ * 
+ * Params:
+ * source_register= The register whose contents
+ *         are to be written to memory.
+ * destination_memory_word= The word number in
+ * 	   memory where the data word will be
+ *         stored.  (This is the same
+ *         as the element number that would be
+ *         used to access it in a corresponding C
+ *         code.) */
+.macro MEM_WRITE
+.mparam source_register, destination_memory_word
+	MOV  r1, destination_memory_word * 4
+	SBBO source_register, r1, 0, 4
+.endm
+
+
+
+/* Allow the PRU to access the main RAM on the
+ * Beaglebone.  This is needed to be run before
+ * attempting to use any memory-mapped I/O. */
+.macro ENABLE_MAIN_MEMORY_ACCESS
+	MOV  r1, PRUSS_CFG
+        LBBO r2, r1, 4, 4
+        CLR  r2.t4
+        SBBO r2, r1, 4, 4
+.endm
+
+
+
+/* Initializes the stack. */
+.macro STACK_INITIALIZE
+        MOV  stack_pointer_reg, STACK_BEGIN
+.endm
+
+
+
+/* Push a contiguous block of registers onto the
+ * stack.
+ *
+ * Params:
+ * starting_register= The lowest numbered
+ *         register in the block of registers to
+ *         be pushed.
+ * number_of_registers= The number of registers
+ *         to be pushed. */
+.macro STACK_PUSH
+.mparam starting_register, number_of_registers
+        SBBO starting_register, stack_pointer_reg, 0, 4 * number_of_registers
+        add  stack_pointer_reg, stack_pointer_reg, 4 * number_or_registers
+.endm
+
+
+
+/* Pop a block of data off of the stack into a
+ * contiguous block of registers.
+ *
+ * Params:
+ * starting_register= The lowest numbered
+ *         register in the destination register
+ *         block.
+ * number_of_registers= The number of registers
+ *         in the destination block to be
+ *         populated. */
+.macro STACK_POP
+.mparam starting_register, number_of_registers
+        SUB  stack_pointer_reg, stack_pointer_reg, 4 * number_of_registers
+        LBBO starting_register, stack_pointer_reg, 0, 4 * number_of_registers
+.endm
+
+
+
+#endif

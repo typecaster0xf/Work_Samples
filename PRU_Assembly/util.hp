@@ -1,0 +1,48 @@
+/* This file contains general-use subroutines. */
+
+
+
+#ifndef _UTIL_HP_
+#define _UTIL_HP_
+
+
+
+#include "registers.hp"
+
+
+
+/* The PRU is always clocked at 200MHz. */
+#define CLOCK_HZ        200000000
+#define NSECS_PER_CYCLE 1000000000 / CLOCK_HZ
+
+
+
+/* A busy-wait loop that delays the PRU by a
+ * number of clock cycles.  Uses register r1.
+ * 
+ * Params:
+ * number_of_cycles= The number of clock cycles
+ *         to delay. */
+.macro DELAY_CYCLES
+.mparam number_of_cycles
+        #define OVERHEAD_CYCLES 1
+        MOV  r1, (number_of_cycles - OVERHEAD_CYCLES) / 2
+DELAY_LOOP:
+        SUB  r1, r1, 1
+        QBNE DELAY_LOOP, r1, 0
+        #undef OVERHEAD_CYCLES
+.endm
+
+
+
+/* Sends a signal to the host processor using
+ * PRU_EVTOUT_0 to indicate program completion,
+ * then halts the PRU. */
+.macro EXIT
+        LDI  R31.b0, (1 << 5) | 3
+        HALT
+.endm
+
+
+
+#endif
